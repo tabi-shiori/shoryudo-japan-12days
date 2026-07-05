@@ -514,6 +514,7 @@ const builderOptions = [
 
 const builderOptionLabels = Object.fromEntries(builderOptions);
 const defaultBuilderSelection = ["kamikochi", "kanazawa", "onsen", "shopping"];
+let builderExpanded = false;
 
 const builderProfiles = {
   balanced: {
@@ -693,13 +694,15 @@ function hotelActionLinks(hotel) {
   };
 }
 
-function renderHotels(activeBase = "全部") {
-  const bases = ["全部", ...Array.from(new Set(hotels.map((hotel) => hotel.base)))];
+function renderHotels(activeBase = hotels[0]?.base || "全部") {
+  const baseOptions = Array.from(new Set(hotels.map((hotel) => hotel.base)));
+  const bases = [...baseOptions, "全部"];
+  const currentBase = bases.includes(activeBase) ? activeBase : baseOptions[0] || "全部";
   const tabs = $("#hotelTabs");
   tabs.innerHTML = bases
     .map(
       (base) => `
-      <button class="mode-button ${base === activeBase ? "active" : ""}" type="button" data-base="${base}">
+      <button class="mode-button ${base === currentBase ? "active" : ""}" type="button" data-base="${base}">
         ${base}
       </button>
     `,
@@ -710,7 +713,7 @@ function renderHotels(activeBase = "全部") {
     button.addEventListener("click", () => renderHotels(button.dataset.base));
   });
 
-  const shown = activeBase === "全部" ? hotels : hotels.filter((hotel) => hotel.base === activeBase);
+  const shown = currentBase === "全部" ? hotels : hotels.filter((hotel) => hotel.base === currentBase);
   $("#hotelGrid").innerHTML = shown
     .map((hotel) => {
       const links = hotelActionLinks(hotel);
@@ -778,8 +781,13 @@ function renderBuilder() {
     .join("");
 
   $("#travelStyle").value = initialState.style;
-  $("#builderChecks").addEventListener("change", updateBuilder);
-  $("#travelStyle").addEventListener("change", updateBuilder);
+  $("#builderChecks").addEventListener("change", handleBuilderInput);
+  $("#travelStyle").addEventListener("change", handleBuilderInput);
+  updateBuilder();
+}
+
+function handleBuilderInput() {
+  builderExpanded = false;
   updateBuilder();
 }
 
@@ -1137,6 +1145,19 @@ function applyBuilderState(state) {
 }
 
 function bindBuilderActions(state) {
+  $("#toggleBuilderDetails")?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    const fold = $("#builderFold");
+    const expanded = !fold.classList.contains("expanded");
+    builderExpanded = expanded;
+    fold.classList.toggle("expanded", expanded);
+    button.setAttribute("aria-expanded", String(expanded));
+    button.textContent = expanded ? "收起详细路线" : "展开完整12天建议";
+    if (!expanded) {
+      $("#builderResult").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  });
+
   $("#copyBuilderLink")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     try {
@@ -1156,6 +1177,7 @@ function bindBuilderActions(state) {
     url.hash = "builder";
     history.replaceState(null, "", url.toString());
     localStorage.removeItem("shoryudo-builder");
+    builderExpanded = false;
     applyBuilderState({ selected: defaultBuilderSelection, style: "balanced" });
   });
 }
@@ -1164,6 +1186,7 @@ function updateBuilder() {
   const state = getBuilderState();
   const plan = buildCustomPlan(state);
   saveBuilderState(state);
+  const expandedClass = builderExpanded ? "expanded" : "";
   $("#builderResult").innerHTML = `
     <div class="result-head">
       <div>
@@ -1185,41 +1208,49 @@ function updateBuilder() {
         )
         .join("")}
     </div>
-    <div class="result-section">
-      <h4>住宿节奏</h4>
-      <div class="stay-plan">
-        ${plan.stays.map((stay) => `<span>${stay.base}<strong>${stay.nights}晚</strong></span>`).join("")}
+    <div class="result-fold ${expandedClass}" id="builderFold">
+      <div class="result-section">
+        <h4>住宿节奏</h4>
+        <div class="stay-plan">
+          ${plan.stays.map((stay) => `<span>${stay.base}<strong>${stay.nights}晚</strong></span>`).join("")}
+        </div>
       </div>
-    </div>
-    <div class="result-section">
-      <h4>12天逐日建议</h4>
-      <div class="result-days">
-        ${plan.days
-          .map(
-            (day) => `
-            <article class="custom-day">
-              <div class="custom-day-top">
-                <span>${day.day}</span>
-                <strong>${day.place}</strong>
-              </div>
-              <h5>${day.title}</h5>
-              <ul>${day.items.map((item) => `<li>${item}</li>`).join("")}</ul>
-              <p><strong>住宿：</strong>${day.sleep}<br><strong>交通：</strong>${day.transit}</p>
-            </article>
-          `,
-          )
-          .join("")}
+      <div class="result-section">
+        <h4>12天逐日建议</h4>
+        <div class="result-days">
+          ${plan.days
+            .map(
+              (day) => `
+              <article class="custom-day">
+                <div class="custom-day-top">
+                  <span>${day.day}</span>
+                  <strong>${day.place}</strong>
+                </div>
+                <h5>${day.title}</h5>
+                <ul>${day.items.map((item) => `<li>${item}</li>`).join("")}</ul>
+                <p><strong>住宿：</strong>${day.sleep}<br><strong>交通：</strong>${day.transit}</p>
+              </article>
+            `,
+            )
+            .join("")}
+        </div>
       </div>
-    </div>
-    <div class="result-section result-note">
-      <h4>为什么这样排</h4>
-      <ul>${plan.reasons.map((item) => `<li>${item}</li>`).join("")}</ul>
-    </div>
-    <div class="result-section result-warning">
-      <h4>执行提醒</h4>
-      <ul>${plan.cautions.map((item) => `<li>${item}</li>`).join("")}</ul>
+      <div class="result-section result-note">
+        <h4>为什么这样排</h4>
+        <ul>${plan.reasons.map((item) => `<li>${item}</li>`).join("")}</ul>
+      </div>
+      <div class="result-section result-warning">
+        <h4>执行提醒</h4>
+        <ul>${plan.cautions.map((item) => `<li>${item}</li>`).join("")}</ul>
+      </div>
+      <div class="result-glass-fade" aria-hidden="true">
+        <span>展开查看完整12天路线、取舍理由和执行提醒</span>
+      </div>
     </div>
     <div class="result-actions">
+      <button type="button" id="toggleBuilderDetails" aria-expanded="${builderExpanded}">
+        ${builderExpanded ? "收起详细路线" : "展开完整12天建议"}
+      </button>
       <button type="button" id="copyBuilderLink">复制分享链接</button>
       <button type="button" id="resetBuilder">恢复默认</button>
     </div>

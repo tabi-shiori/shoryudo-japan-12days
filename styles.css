@@ -1009,8 +1009,11 @@ select {
 }
 
 .builder-result {
+  overflow: hidden;
   min-height: 360px;
   padding: 22px;
+  background: rgba(255, 253, 248, 0.72);
+  backdrop-filter: blur(18px) saturate(1.08);
   box-shadow: var(--shadow);
 }
 
@@ -1095,6 +1098,63 @@ select {
 .result-section h4 {
   margin-bottom: 10px;
   font-size: 16px;
+}
+
+.result-fold {
+  position: relative;
+  max-height: 430px;
+  overflow: hidden;
+  transition:
+    max-height 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 360ms ease;
+}
+
+.result-fold.expanded {
+  max-height: 3800px;
+}
+
+.result-glass-fade {
+  position: absolute;
+  right: -22px;
+  bottom: 0;
+  left: -22px;
+  display: grid;
+  min-height: 150px;
+  align-items: end;
+  justify-items: center;
+  padding: 72px 18px 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.02), rgba(255, 253, 248, 0.78) 46%, rgba(255, 253, 248, 0.94)),
+    rgba(255, 255, 255, 0.34);
+  border-top: 1px solid rgba(255, 255, 255, 0.44);
+  backdrop-filter: blur(13px) saturate(1.16);
+  pointer-events: none;
+  transition:
+    opacity 360ms ease,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.result-glass-fade span {
+  padding: 8px 12px;
+  color: var(--deep-sage);
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(45, 95, 85, 0.13);
+  border-radius: 999px;
+  box-shadow: 0 12px 24px rgba(45, 95, 85, 0.1);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.result-fold.expanded .result-glass-fade {
+  opacity: 0;
+  transform: translateY(34px);
+}
+
+@supports not (backdrop-filter: blur(10px)) {
+  .builder-result,
+  .result-glass-fade {
+    background: rgba(255, 253, 248, 0.94);
+  }
 }
 
 .stay-plan {
