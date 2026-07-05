@@ -512,6 +512,36 @@ const builderOptions = [
   ["shopping", "名古屋购物"],
 ];
 
+const builderOptionLabels = Object.fromEntries(builderOptions);
+const defaultBuilderSelection = ["kamikochi", "kanazawa", "onsen", "shopping"];
+
+const builderProfiles = {
+  balanced: {
+    title: "平衡慢游版",
+    summary: "风景、人文、温泉和购物都保留，山岳日之间留缓冲，适合第一次去升龙道。",
+    pace: "每天1个主目标",
+    logic: "核心思路是把高体力的山岳日和城市日错开，不把一个人旅行排成赶场。",
+  },
+  slow: {
+    title: "少换宿留白版",
+    summary: "压低换酒店频率，高山和金泽作为主要基地，适合想慢慢拍照、逛街和泡汤的人。",
+    pace: "基地型慢游",
+    logic: "用日归替代连续转场，把不确定天气和体力波动留在缓冲日里。",
+  },
+  photo: {
+    title: "摄影优先版",
+    summary: "把上高地、白川乡、立山黑部放到更适合光线和天气窗口的位置，清晨出发优先。",
+    pace: "清晨出发",
+    logic: "好风景尽量放在上午，下午安排转场或城市散步，减少错过光线的概率。",
+  },
+  budget: {
+    title: "经济取舍版",
+    summary: "保留最有代表性的温泉、古城和金泽，把高价山岳交通做成天气好才执行的加价模块。",
+    pace: "预算优先",
+    logic: "把住宿和交通成本压在可控范围内，贵的体验只在天气值得时才上。",
+  },
+};
+
 const typeColors = {
   nature: "#5d9fbd",
   culture: "#c86d3d",
@@ -739,65 +769,462 @@ function renderTraffic() {
 }
 
 function renderBuilder() {
+  const initialState = readBuilderState();
   $("#builderChecks").innerHTML = builderOptions
     .map(([value, label]) => {
-      const checked = ["kamikochi", "kanazawa", "onsen", "shopping"].includes(value) ? "checked" : "";
+      const checked = initialState.selected.includes(value) ? "checked" : "";
       return `<label><input type="checkbox" value="${value}" ${checked} /> <span>${label}</span></label>`;
     })
     .join("");
 
+  $("#travelStyle").value = initialState.style;
   $("#builderChecks").addEventListener("change", updateBuilder);
   $("#travelStyle").addEventListener("change", updateBuilder);
   updateBuilder();
 }
 
-function updateBuilder() {
-  const selected = new Set(
-    Array.from(document.querySelectorAll("#builderChecks input:checked")).map((input) => input.value),
+function normaliseBuilderState(state) {
+  const validOptions = new Set(builderOptions.map(([value]) => value));
+  const selected =
+    Array.isArray(state?.selected) && state.selected.length
+      ? state.selected.filter((value) => validOptions.has(value))
+      : defaultBuilderSelection;
+  const style = builderProfiles[state?.style] ? state.style : "balanced";
+  return { selected, style };
+}
+
+function readBuilderState() {
+  const params = new URLSearchParams(location.search);
+  if (params.has("style") || params.has("keep")) {
+    return normaliseBuilderState({
+      style: params.get("style"),
+      selected: (params.get("keep") || "").split(",").filter(Boolean),
+    });
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem("shoryudo-builder") || "null");
+    if (saved) return normaliseBuilderState(saved);
+  } catch (error) {
+    localStorage.removeItem("shoryudo-builder");
+  }
+
+  return normaliseBuilderState({ selected: defaultBuilderSelection, style: "balanced" });
+}
+
+function getBuilderState() {
+  return normaliseBuilderState({
+    selected: Array.from(document.querySelectorAll("#builderChecks input:checked")).map((input) => input.value),
+    style: $("#travelStyle").value,
+  });
+}
+
+function saveBuilderState(state) {
+  localStorage.setItem("shoryudo-builder", JSON.stringify(state));
+}
+
+function buildCustomDays(selected, style) {
+  const has = (key) => selected.has(key);
+  const budgetTateyama = style === "budget" && has("tateyama");
+  const days = [
+    {
+      place: "名古屋",
+      title: "抵达与补给",
+      items: ["上海飞名古屋，优先中部国际机场进出", "名铁进市区，办理交通卡/取现金", "晚上只安排便利店、药妆或近酒店晚餐"],
+      sleep: "名古屋",
+      transit: "机场到市区约30-45分钟",
+    },
+    {
+      place: "名古屋",
+      title: has("shopping") ? "城市适应与购物打底" : "城市适应与庭园散步",
+      items: has("shopping")
+        ? ["名古屋城或德川园二选一", "荣商圈、大须商店街先踩点", "把大件购物留到D11，今天只熟悉价格"]
+        : ["名古屋城或德川园慢逛", "热田神宫/四间道二选一", "晚上吃味噌猪排或鳗鱼饭"],
+      sleep: "名古屋",
+      transit: "地铁+步行，控制第一段体力",
+    },
+    has("onsen")
+      ? {
+          place: "下吕温泉",
+          title: "经济温泉体验",
+          items:
+            style === "budget"
+              ? ["名古屋到下吕，优先日归温泉或平价温泉酒店", "温泉街足汤、飞驒川散步", "不追求一泊二食，把预算留给交通和美食"]
+              : ["名古屋到下吕，住一晚温泉酒店或做日归温泉", "温泉街、足汤、合掌村民家园轻松走", "晚上早点休息，为高山段留体力"],
+          sleep: style === "slow" ? "下吕/高山" : "下吕温泉",
+          transit: "JR特急或高速巴士，尽量白天抵达",
+        }
+      : {
+          place: "高山",
+          title: "跳过温泉，直接进入飞驒",
+          items: ["名古屋直接到高山", "下午三町古街轻量散步", "晚餐安排飞驒牛或朴叶味噌"],
+          sleep: "高山",
+          transit: "少一段停留，换来更低住宿成本",
+        },
+    {
+      place: "高山",
+      title: "古城人文日",
+      items: ["宫川朝市早逛", "高山阵屋和三町古街", "下午留给咖啡、小店、民艺馆"],
+      sleep: "高山",
+      transit: "全天步行友好，适合慢拍细节",
+    },
+    {
+      place: "高山/飞驒古川",
+      title: style === "photo" && has("kamikochi") ? "上高地前夜准备" : "飞驒慢游缓冲",
+      items:
+        style === "photo" && has("kamikochi")
+          ? ["上午飞驒古川或高山老街补拍", "下午采购次日轻食和雨具", "确认上高地巴士时刻，早点睡"]
+          : ["飞驒古川半日，适合安静街景和水渠", "天气不好则留在高山咖啡/小店", "这天不塞远距离移动"],
+      sleep: has("kamikochi") && style === "photo" ? "高山或平汤" : "高山",
+      transit: "短距离JR/巴士，作为机动日",
+    },
+    has("kamikochi")
+      ? {
+          place: "上高地",
+          title: "河谷摄影与山景日",
+          items:
+            style === "photo"
+              ? ["尽量早班车进上高地", "大正池到河童桥慢拍，光线好再走明神池", "下午回高山/平汤，避免夜间赶路"]
+              : ["大正池、田代池、河童桥为主线", "体力好再加明神池", "雨天改高山市内或新穗高缆车判断"],
+          sleep: style === "slow" ? "高山" : "高山或平汤",
+          transit: "巴士进出，红叶季建议提前查班次",
+        }
+      : {
+          place: has("shirakawa") ? "白川乡" : "奥飞驒/高山",
+          title: has("shirakawa") ? "合掌村半日" : "删掉上高地后的轻量山景",
+          items: has("shirakawa")
+            ? ["高山到白川乡，上午拍荻町合掌村", "避开正午人流，先上展望台再回村里", "下午回高山或继续去金泽"]
+            : ["高山周边慢游，或选新穗高缆车看天气执行", "保留半天休息和洗衣", "如果想补自然景观，可临时加平汤/奥飞驒"],
+          sleep: has("kanazawa") && has("shirakawa") ? "金泽" : "高山",
+          transit: "用短线替代完整山岳日",
+        },
+    has("shirakawa") && has("kanazawa")
+      ? {
+          place: "白川乡/金泽",
+          title: "世界遗产转场",
+          items: ["高山出发到白川乡，行李尽量寄存或轻装", "荻町合掌村2-3小时足够", "下午进金泽，晚上东茶屋街或近江町周边吃饭"],
+          sleep: "金泽",
+          transit: "浓飞/北铁巴士建议预约",
+        }
+      : has("kanazawa")
+        ? {
+            place: "金泽",
+            title: "进入美学城市",
+            items: ["高山到金泽，下午不要排太满", "东茶屋街或主计町茶屋街散步", "晚餐选海鲜、关东煮或居酒屋"],
+            sleep: "金泽",
+            transit: "巴士转场日，下午做轻量城市散步",
+          }
+        : has("tateyama")
+          ? {
+              place: "富山",
+              title: "为立山黑部靠近入口",
+              items: ["高山到富山，减少次日山岳压力", "富山玻璃美术馆或富山城址公园", "晚餐吃富山湾寿司"],
+              sleep: "富山",
+              transit: "把长交通拆开，降低误车风险",
+            }
+          : {
+              place: "松本",
+              title: "城下町替代线",
+              items: ["高山到松本", "中町通、绳手通轻逛", "晚上住车站附近，方便回名古屋"],
+              sleep: "松本",
+              transit: "不上金泽/富山时，用松本收束路线",
+            },
+    has("kanazawa")
+      ? {
+          place: "金泽",
+          title: "兼六园与美术馆",
+          items: ["早上兼六园，人少也更好拍", "21世纪美术馆提前看展览预约", "下午近江町市场、武家屋敷或茶屋街二选一"],
+          sleep: "金泽",
+          transit: "城市日，适合穿好看一点拍照",
+        }
+      : has("tateyama")
+        ? {
+            place: "富山",
+            title: "富山海鲜与山岳准备",
+            items: ["玻璃美术馆、岩濑老街或环水公园", "确认立山黑部天气和行李转送", "早点休息，次日不要临时改太多"],
+            sleep: "富山",
+            transit: "前泊富山，换来更稳的山岳日",
+          }
+        : {
+            place: "松本",
+            title: "松本城与街区慢游",
+            items: ["松本城上午拍", "中町通、绳手通、咖啡店", "下午可回名古屋或继续住松本"],
+            sleep: "松本",
+            transit: "城市节奏轻，适合替代山岳日",
+          },
+    has("tateyama")
+      ? {
+          place: "富山",
+          title: budgetTateyama ? "立山黑部执行判断" : "立山黑部前泊准备",
+          items: budgetTateyama
+            ? ["早上查山上能见度和预算", "晴天再执行室堂折返或全线穿越", "阴雨则改富山市内，把钱省下来"]
+            : ["金泽/高山转富山，整理轻装包", "确认阿尔卑斯路线票务和行李寄送", "晚上吃寿司，早点睡"],
+          sleep: "富山",
+          transit: "这天的作用是给山岳线留成功率",
+        }
+      : has("kanazawa")
+        ? {
+            place: "金泽/加贺",
+            title: "金泽第二天或近郊温泉",
+            items: ["想慢就留金泽补茶屋街、市场和小店", "想泡汤可日归加贺温泉乡", "晚上可住金泽或回名古屋"],
+            sleep: style === "slow" ? "金泽" : "名古屋",
+            transit: "不上立山黑部时，这天用于休整",
+          }
+        : {
+            place: "名古屋",
+            title: "回到城市做收尾",
+            items: ["松本/高山回名古屋", "下午轻购物或咖啡", "整理行李和退税清单"],
+            sleep: "名古屋",
+            transit: "提前回大城市，返程压力更低",
+          },
+    has("tateyama")
+      ? {
+          place: budgetTateyama ? "富山/松本" : "立山黑部",
+          title: budgetTateyama ? "可选山岳日或城市替代" : "山岳穿越日",
+          items: budgetTateyama
+            ? ["晴天：富山到室堂折返，或全线到松本", "雨天：富山城市线/金泽补完", "不要为了打卡在低能见度时硬上山"]
+            : ["富山到立山，室堂、大观峰、黑部水坝", "穿越到信浓大町再去松本", "这天票价高、时间长，必须早出发"],
+          sleep: "松本",
+          transit: "全程公共交通，务必按官方时刻表执行",
+        }
+      : {
+          place: has("kanazawa") ? "松本/名古屋" : "名古屋",
+          title: "城下町收尾或提前购物",
+          items: has("kanazawa")
+            ? ["金泽到松本或直接回名古屋", "如果去松本，主打松本城和老街", "如果想省体力，直接回名古屋购物"]
+            : ["名古屋市内补完", "荣、名站、大须按购物清单走", "晚上整理行李"],
+          sleep: "名古屋",
+          transit: "把返程前一晚放在名古屋更稳",
+        },
+    {
+      place: "名古屋",
+      title: has("shopping") ? "购物与美食收尾" : "低强度收尾日",
+      items: has("shopping")
+        ? ["名站/荣集中采购药妆、衣服和伴手礼", "午餐安排鳗鱼饭、味噌猪排或咖啡甜点", "晚上提前打包，确认返程交通"]
+        : ["热田神宫、四间道或丰田产业技术纪念馆三选一", "找一家舒服的咖啡店收尾", "晚上提前打包，确认返程交通"],
+      sleep: "名古屋",
+      transit: "住名站或荣，方便最后一天去机场",
+    },
+    {
+      place: "名古屋/上海",
+      title: "返程日",
+      items: ["按航班时间去中部国际机场", "预留退税、托运和交通误差", "如果是晚班机，可上午补买伴手礼"],
+      sleep: "返程",
+      transit: "名铁到机场约30-45分钟",
+    },
+  ];
+
+  return days.map((day, index) => ({ ...day, day: `D${index + 1}` }));
+}
+
+function summariseStays(days) {
+  return days
+    .filter((day) => day.sleep !== "返程")
+    .reduce((stays, day) => {
+      const last = stays[stays.length - 1];
+      if (last?.base === day.sleep) {
+        last.nights += 1;
+      } else {
+        stays.push({ base: day.sleep, nights: 1 });
+      }
+      return stays;
+    }, []);
+}
+
+function buildCustomPlan(state) {
+  const selected = new Set(state.selected);
+  const profile = builderProfiles[state.style] || builderProfiles.balanced;
+  const days = buildCustomDays(selected, state.style);
+  const stays = summariseStays(days);
+  const labels = state.selected.map((value) => builderOptionLabels[value]).filter(Boolean);
+  const fitScore = Math.min(
+    96,
+    Math.max(
+      78,
+      84 +
+        state.selected.length * 2 +
+        (selected.has("kamikochi") && selected.has("kanazawa") ? 3 : 0) -
+        (state.style === "budget" && selected.has("tateyama") ? 3 : 0),
+    ),
   );
-  const style = $("#travelStyle").value;
+  const budgetLevel =
+    state.style === "budget"
+      ? selected.has("tateyama")
+        ? "中：立山黑部做可选"
+        : "低-中"
+      : selected.has("tateyama")
+        ? "中-高：山岳交通另留预算"
+        : "中";
+  const weatherFlex = selected.has("tateyama")
+    ? "需要1个晴天窗口"
+    : selected.has("kamikochi")
+      ? "雨天可退回高山/奥飞驒"
+      : "整体较稳定";
 
-  let path = ["名古屋", "下吕温泉", "高山"];
-  if (selected.has("kamikochi")) path.push("上高地");
-  if (selected.has("shirakawa")) path.push("白川乡");
-  if (selected.has("kanazawa")) path.push("金泽");
-  if (selected.has("tateyama")) path.push("富山", "立山黑部", "松本");
-  path.push("名古屋");
-
-  if (style === "slow") {
-    path = ["名古屋", "下吕/高山", "高山", selected.has("kanazawa") ? "金泽" : "松本", "名古屋"];
+  const reasons = [profile.logic];
+  if (selected.has("kamikochi") && selected.has("tateyama")) {
+    reasons.push("上高地和立山黑部分开放，中间用金泽/富山做缓冲，避免连续两天高强度山岳交通。");
+  }
+  if (selected.has("onsen")) {
+    reasons.push("温泉放在前半段，下吕或平价日归都能体验，不会挤压后面山景和城市时间。");
+  }
+  if (selected.has("shirakawa")) {
+    reasons.push("白川乡适合作为高山到金泽的转场点，不建议单独为了它多折返一次。");
+  }
+  if (!selected.has("kamikochi")) {
+    reasons.push("删掉上高地后，自然摄影感会下降，建议用新穗高、奥飞驒或松本周边补一个山景半日。");
+  }
+  if (state.style === "budget") {
+    reasons.push("省钱版把昂贵体验变成条件执行，晴天和值得拍时再花钱，阴雨就转城市线。");
   }
 
-  if (style === "budget" && selected.has("tateyama")) {
-    path = path.filter((item) => item !== "立山黑部");
-    if (!path.includes("松本")) path.splice(path.length - 1, 0, "松本");
+  const cautions = [];
+  if (selected.has("tateyama")) cautions.push("立山黑部票价和耗时都高，出发前一天必须查能见度、运行情况和行李转送。");
+  if (selected.has("kamikochi")) cautions.push("上高地红叶季巴士容易满，建议至少提前一天确认班次，清晨出发体验最好。");
+  if (selected.has("shirakawa")) cautions.push("白川乡到金泽/高山的巴士建议预约，行李越少越舒服。");
+  if (state.style === "slow") cautions.push("慢游版会减少打卡数量，如果想加入立山黑部，最好牺牲一个城市缓冲日。");
+  if (cautions.length === 0) cautions.push("这版比较稳，重点是把住宿订在车站附近，减少一个人拖行李的压力。");
+
+  return {
+    profile,
+    title: `${profile.title}：${labels.length ? labels.join(" + ") : "基础城市慢游"}`,
+    days,
+    stays,
+    fitScore,
+    metrics: [
+      ["匹配重点", labels.length ? labels.join("、") : "城市慢游"],
+      ["住宿基地", Array.from(new Set(stays.map((stay) => stay.base))).join(" → ")],
+      ["换宿压力", `${Math.max(stays.length - 1, 0)}次左右`],
+      ["预算压力", budgetLevel],
+      ["天气弹性", weatherFlex],
+    ],
+    reasons,
+    cautions,
+  };
+}
+
+function makeBuilderShareUrl(state) {
+  const url = new URL(location.href);
+  url.searchParams.set("style", state.style);
+  url.searchParams.set("keep", state.selected.join(","));
+  url.hash = "builder";
+  return url.toString();
+}
+
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
   }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
 
-  const warnings = [];
-  if (selected.has("tateyama")) warnings.push("立山黑部建议只在天气好时执行，预算也要单独留出。");
-  if (!selected.has("kamikochi")) warnings.push("如果删掉上高地，这趟会少一个最符合你偏好的自然摄影日。");
-  if (style === "slow") warnings.push("慢游版会减少换宿，但也会牺牲白川乡或立山黑部的完整性。");
-  if (style === "photo") warnings.push("摄影版建议把上高地安排在前一晚住平汤或高山，清晨出发。");
-  if (style === "budget") warnings.push("省钱版优先保留下吕、高山、金泽，立山黑部作为可选加价模块。");
+function applyBuilderState(state) {
+  const normalised = normaliseBuilderState(state);
+  document.querySelectorAll("#builderChecks input").forEach((input) => {
+    input.checked = normalised.selected.includes(input.value);
+  });
+  $("#travelStyle").value = normalised.style;
+  updateBuilder();
+}
 
+function bindBuilderActions(state) {
+  $("#copyBuilderLink")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    try {
+      await copyText(makeBuilderShareUrl(state));
+      button.textContent = "已复制链接";
+      setTimeout(() => {
+        button.textContent = "复制分享链接";
+      }, 1600);
+    } catch (error) {
+      button.textContent = "复制失败，请手动复制地址栏";
+    }
+  });
+
+  $("#resetBuilder")?.addEventListener("click", () => {
+    const url = new URL(location.href);
+    url.search = "";
+    url.hash = "builder";
+    history.replaceState(null, "", url.toString());
+    localStorage.removeItem("shoryudo-builder");
+    applyBuilderState({ selected: defaultBuilderSelection, style: "balanced" });
+  });
+}
+
+function updateBuilder() {
+  const state = getBuilderState();
+  const plan = buildCustomPlan(state);
+  saveBuilderState(state);
   $("#builderResult").innerHTML = `
-    <h3>你的路线建议</h3>
-    <div class="result-path">
-      ${path
+    <div class="result-head">
+      <div>
+        <span class="result-kicker">智能路线建议</span>
+        <h3>${plan.title}</h3>
+        <p>${plan.profile.summary}</p>
+      </div>
+      <div class="result-badge"><strong>${plan.fitScore}</strong><span>匹配度</span></div>
+    </div>
+    <div class="result-metrics">
+      ${plan.metrics
         .map(
-          (step, index) => `
-          <div class="result-step">
-            <span>${index + 1}</span>
-            <strong>${step}</strong>
+          ([label, value]) => `
+          <div>
+            <span>${label}</span>
+            <strong>${value}</strong>
           </div>
         `,
         )
         .join("")}
     </div>
-    <div class="result-note">
-      ${warnings.length ? warnings.join(" ") : "这个组合很均衡，可以沿用系统默认12天路线。"}
+    <div class="result-section">
+      <h4>住宿节奏</h4>
+      <div class="stay-plan">
+        ${plan.stays.map((stay) => `<span>${stay.base}<strong>${stay.nights}晚</strong></span>`).join("")}
+      </div>
+    </div>
+    <div class="result-section">
+      <h4>12天逐日建议</h4>
+      <div class="result-days">
+        ${plan.days
+          .map(
+            (day) => `
+            <article class="custom-day">
+              <div class="custom-day-top">
+                <span>${day.day}</span>
+                <strong>${day.place}</strong>
+              </div>
+              <h5>${day.title}</h5>
+              <ul>${day.items.map((item) => `<li>${item}</li>`).join("")}</ul>
+              <p><strong>住宿：</strong>${day.sleep}<br><strong>交通：</strong>${day.transit}</p>
+            </article>
+          `,
+          )
+          .join("")}
+      </div>
+    </div>
+    <div class="result-section result-note">
+      <h4>为什么这样排</h4>
+      <ul>${plan.reasons.map((item) => `<li>${item}</li>`).join("")}</ul>
+    </div>
+    <div class="result-section result-warning">
+      <h4>执行提醒</h4>
+      <ul>${plan.cautions.map((item) => `<li>${item}</li>`).join("")}</ul>
+    </div>
+    <div class="result-actions">
+      <button type="button" id="copyBuilderLink">复制分享链接</button>
+      <button type="button" id="resetBuilder">恢复默认</button>
     </div>
   `;
+  bindBuilderActions(state);
 }
 
 function renderChecklist() {
