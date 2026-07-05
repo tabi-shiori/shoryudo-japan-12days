@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>日本升龙道12天慢旅行规划</title>
+    <meta
+      name="description"
+      content="上海出发、名古屋进出、不自驾、9月底到10月初，日本升龙道12天慢旅行互动攻略。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header" aria-label="页面导航">
+      <a class="brand" href="#top" aria-label="回到顶部">
+        <span class="brand-mark">昇</span>
+        <span>升龙道 12 天</span>
+      </a>
+      <nav class="nav-links" aria-label="主要章节">
+        <a href="#route">行程</a>
+        <a href="#map">地图</a>
+        <a href="#compare">取舍</a>
+        <a href="#hotels">酒店</a>
+        <a href="#traffic">交通</a>
+        <a href="#builder">自定义</a>
+        <a href="#prepare">准备</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <img
+          class="hero-image"
+          src="./assets/hero-japanese-alps.png"
+          alt="日本阿尔卑斯山、清澈河谷、木桥与温泉旅馆氛围图"
+        />
+        <div class="hero-scrim"></div>
+        <div class="hero-content">
+          <p class="eyebrow">上海出发 · 名古屋优先 · 不自驾 · 9月底到10月初</p>
+          <h1 id="hero-title">
+            <span>日本升龙道</span>
+            <span>12 天慢旅行</span>
+          </h1>
+          <p class="hero-copy">
+            把名古屋、高山、上高地、白川乡、金泽、富山、立山黑部和松本串成一条公共交通友好的路线。
+            风景、温泉、人文和购物都有，节奏留白，不把一个人的旅行做成赶场。
+          </p>
+          <div class="hero-actions" aria-label="核心操作">
+            <a class="primary-action" href="#route">查看推荐路线</a>
+            <a class="secondary-action" href="#builder">生成我的版本</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="overview band" aria-label="基础行程设定">
+        <div class="section-inner overview-grid">
+          <article class="stat-tile">
+            <span class="stat-label">旅行时长</span>
+            <strong>12 天</strong>
+            <span>含上海往返飞行日</span>
+          </article>
+          <article class="stat-tile">
+            <span class="stat-label">交通原则</span>
+            <strong>不自驾</strong>
+            <span>JR、浓飞巴士、阿尔卑斯路线</span>
+          </article>
+          <article class="stat-tile">
+            <span class="stat-label">路线节奏</span>
+            <strong>慢游</strong>
+            <span>摄影、温泉、美食、人文</span>
+          </article>
+          <article class="stat-tile">
+            <span class="stat-label">预算策略</span>
+            <strong>经济优先</strong>
+            <span>温泉经济化，关键体验不省</span>
+          </article>
+        </div>
+      </section>
+
+      <section id="route" class="section route-section" aria-labelledby="route-title">
+        <div class="section-inner">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">System Route</p>
+              <h2 id="route-title">系统推荐路线</h2>
+            </div>
+            <div class="segmented" role="tablist" aria-label="行程模式">
+              <button class="mode-button active" type="button" data-mode="balanced">平衡默认</button>
+              <button class="mode-button" type="button" data-mode="scenery">风景优先</button>
+              <button class="mode-button" type="button" data-mode="budget">更省钱</button>
+              <button class="mode-button" type="button" data-mode="rain">雨天替代</button>
+            </div>
+          </div>
+
+          <div class="route-summary" id="routeSummary" aria-live="polite"></div>
+          <div class="timeline" id="timeline"></div>
+        </div>
+      </section>
+
+      <section id="map" class="section map-section" aria-labelledby="map-title">
+        <div class="section-inner map-layout">
+          <div class="map-copy">
+            <p class="eyebrow">Interactive Map</p>
+            <h2 id="map-title">升龙道点位地图与评分</h2>
+            <p>
+              点击地图上的地点查看详情。评分不是大众排行，而是按你的偏好加权：公共交通可达性、
+              一人旅行舒适度、摄影风景、温泉/人文、美食购物和9月底10月初适配度。
+            </p>
+            <div class="map-tools" aria-label="地图筛选">
+              <label><input type="checkbox" value="nature" checked /> 自然风景</label>
+              <label><input type="checkbox" value="culture" checked /> 人文古城</label>
+              <label><input type="checkbox" value="onsen" checked /> 温泉</label>
+              <label><input type="checkbox" value="city" checked /> 城市购物</label>
+            </div>
+          </div>
+
+          <div class="map-board" aria-label="升龙道示意地图">
+            <svg viewBox="0 0 760 520" role="img" aria-labelledby="svg-map-title svg-map-desc">
+              <title id="svg-map-title">升龙道旅行点位示意地图</title>
+              <desc id="svg-map-desc">从名古屋经下吕、高山、上高地、白川乡、金泽、富山、立山黑部到松本，再回名古屋。</desc>
+              <defs>
+                <pattern id="paperDots" width="18" height="18" patternUnits="userSpaceOnUse">
+                  <circle cx="2" cy="2" r="1.1" fill="rgba(45,95,85,.08)" />
+                </pattern>
+                <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="rgba(29,45,42,.18)" />
+                </filter>
+              </defs>
+              <rect class="map-paper" x="0" y="0" width="760" height="520" rx="18" />
+              <path
+                class="map-sea sea-japan"
+                d="M49 55 C121 9 228 5 309 43 C230 99 186 167 174 252 C160 349 204 423 280 482 C149 471 65 407 32 307 C-2 203 0 104 49 55Z"
+              />
+              <path
+                class="map-sea pacific"
+                d="M535 66 C641 78 720 153 735 257 C751 369 669 463 542 492 C586 430 600 352 569 277 C541 208 495 150 535 66Z"
+              />
+              <path
+                class="map-shape coast"
+                d="M162 221 C167 140 231 83 327 69 C425 54 560 65 634 128 C704 188 715 284 667 366 C617 450 505 494 386 472 C270 451 177 383 159 292 C154 266 158 242 162 221Z"
+              />
+              <path
+                class="map-shape mountain"
+                d="M277 353 C317 268 366 207 438 161 C492 126 560 134 609 181 C552 191 506 221 460 269 C411 321 354 354 277 353Z"
+              />
+              <path
+                class="map-shape note-wash"
+                d="M251 403 C315 358 384 347 454 363 C515 377 576 408 627 452 C532 488 390 496 285 452 C255 439 240 423 251 403Z"
+              />
+              <path
+                class="map-river"
+                d="M479 154 C458 193 461 228 501 253 C542 279 552 314 518 355 C485 394 484 430 516 463"
+              />
+              <g class="map-ridges">
+                <path d="M286 343 C322 292 354 254 403 222" />
+                <path d="M324 367 C362 313 406 269 463 233" />
+                <path d="M390 365 C430 312 478 270 544 237" />
+                <path d="M435 188 C473 167 520 165 562 187" />
+              </g>
+              <g class="map-stamps">
+                <text x="72" y="112">Sea of Japan</text>
+                <text x="570" y="91">Japan Alps</text>
+                <text x="586" y="480">Pacific side</text>
+                <g class="compass" transform="translate(650 55)">
+                  <circle cx="0" cy="0" r="24" />
+                  <path d="M0 -17 L6 0 L0 17 L-6 0Z" />
+                  <text x="-5" y="-28">N</text>
+                </g>
+              </g>
+              <path
+                class="route-halo"
+                d="M440 400 L345 346 L295 278 L424 257 L250 214 L166 133 L206 82 L360 144 L520 156 L585 250 L501 334 L440 400"
+              />
+              <path
+                class="route-line"
+                d="M440 400 L345 346 L295 278 L424 257 L250 214 L166 133 L206 82 L360 144 L520 156 L585 250 L501 334 L440 400"
+              />
+              <g id="mapPins"></g>
+            </svg>
+            <div class="map-legend">
+              <span><i class="dot nature"></i>自然</span>
+              <span><i class="dot culture"></i>人文</span>
+              <span><i class="dot onsen"></i>温泉</span>
+              <span><i class="dot city"></i>城市</span>
+            </div>
+          </div>
+
+          <aside class="place-panel" id="placePanel" aria-live="polite"></aside>
+        </div>
+      </section>
+
+      <section id="compare" class="section compare-section" aria-labelledby="compare-title">
+        <div class="section-inner">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Decision Cards</p>
+              <h2 id="compare-title">上高地与立山黑部怎么取舍</h2>
+            </div>
+            <p class="heading-note">默认全保留，但网站会把它们设成可替换模块。</p>
+          </div>
+          <div class="compare-grid" id="compareGrid"></div>
+        </div>
+      </section>
+
+      <section id="hotels" class="section hotel-section" aria-labelledby="hotels-title">
+        <div class="section-inner">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Hotel Base</p>
+              <h2 id="hotels-title">住宿基地与酒店候选</h2>
+            </div>
+            <p class="heading-note">按一个人、不自驾、经济优先和9月底-10月初旺季来筛选。</p>
+          </div>
+          <div class="hotel-toolbar">
+            <div class="segmented hotel-tabs" id="hotelTabs" aria-label="住宿城市筛选"></div>
+            <p class="hotel-disclaimer">
+              评分为本攻略适合度；价格为每晚动态参考，实际以 Booking、Agoda、Jalan、乐天或酒店官网为准。
+            </p>
+          </div>
+          <div class="hotel-grid" id="hotelGrid" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="traffic" class="section traffic-section" aria-labelledby="traffic-title">
+        <div class="section-inner">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Transit Planner</p>
+              <h2 id="traffic-title">路线与交通查询</h2>
+            </div>
+            <p class="heading-note">班次会季节调整，临近出发前再按官方时刻表复核。</p>
+          </div>
+
+          <div class="traffic-grid">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>区间</th>
+                    <th>建议方式</th>
+                    <th>参考时长</th>
+                    <th>替代方案</th>
+                    <th>提醒</th>
+                  </tr>
+                </thead>
+                <tbody id="trafficTable"></tbody>
+              </table>
+            </div>
+            <aside class="pass-panel">
+              <h3>票券初判</h3>
+              <div id="passAdvice"></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section id="builder" class="section builder-section" aria-labelledby="builder-title">
+        <div class="section-inner builder-layout">
+          <div>
+            <p class="eyebrow">Custom Route</p>
+            <h2 id="builder-title">自定义行程生成器</h2>
+            <p>
+              勾选你想保留的重点，再选择旅行倾向。它不会替代最终订票，但能快速告诉你这条路线该怎样改。
+            </p>
+            <div class="builder-controls">
+              <fieldset>
+                <legend>想保留的重点</legend>
+                <div class="check-grid" id="builderChecks"></div>
+              </fieldset>
+              <label class="select-label" for="travelStyle">旅行倾向</label>
+              <select id="travelStyle">
+                <option value="balanced">平衡：风景、人文、购物都要</option>
+                <option value="slow">更慢：少换乘，多留白</option>
+                <option value="photo">摄影：优先山水与清晨傍晚</option>
+                <option value="budget">省钱：减少高价山岳交通</option>
+              </select>
+            </div>
+          </div>
+          <div class="builder-result" id="builderResult" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="prepare" class="section prepare-section" aria-labelledby="prepare-title">
+        <div class="section-inner prepare-layout">
+          <div>
+            <p class="eyebrow">Before Departure</p>
+            <h2 id="prepare-title">出行前准备清单</h2>
+            <p>
+              清单会保存在当前浏览器里。真正出发前，把机票、住宿、巴士预约和山岳天气再核一次。
+            </p>
+          </div>
+          <div class="checklist" id="checklist"></div>
+        </div>
+      </section>
+
+      <section class="section sources-section" aria-labelledby="sources-title">
+        <div class="section-inner">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Sources</p>
+              <h2 id="sources-title">数据来源与复核节点</h2>
+            </div>
+          </div>
+          <div class="source-list">
+            <a href="https://www.alpen-route.com/en/" target="_blank" rel="noreferrer">立山黑部阿尔卑斯路线官网</a>
+            <a href="https://touristpass.jp/en/alpine/" target="_blank" rel="noreferrer">Alpine-Takayama-Matsumoto Area Tourist Pass</a>
+            <a href="https://touristpass.jp/en/takayama_hokuriku/" target="_blank" rel="noreferrer">Takayama-Hokuriku Area Tourist Pass</a>
+            <a href="https://www.nouhibus.co.jp/english/highwaybus/" target="_blank" rel="noreferrer">浓飞巴士高速巴士英文官网</a>
+            <a href="https://www.kamikochi.org/access" target="_blank" rel="noreferrer">上高地官方交通信息</a>
+            <a href="https://www.daiwaroynet.jp/en/nagoya-taikodoriguchi/" target="_blank" rel="noreferrer">Daiwa Roynet 名古屋太阁通口官网</a>
+            <a href="https://www.hotelforza.jp/kanazawa/en/" target="_blank" rel="noreferrer">Hotel Forza Kanazawa 官网</a>
+            <a href="https://www.daiwaroynet.jp/en/toyama-ekimae/" target="_blank" rel="noreferrer">Daiwa Roynet 富山站前官网</a>
+          </div>
+          <p class="source-note">
+            本页按 2026 年 7 月可核信息制作。机票、班次、预约规则、票价、酒店房价、平台评价和天气会变化，出发前 30 天与 7 天各复核一次。
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
