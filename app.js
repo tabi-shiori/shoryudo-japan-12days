@@ -1152,7 +1152,7 @@ function bindBuilderActions(state) {
     builderExpanded = expanded;
     fold.classList.toggle("expanded", expanded);
     button.setAttribute("aria-expanded", String(expanded));
-    button.textContent = expanded ? "收起详细路线" : "展开完整12天建议";
+    button.textContent = expanded ? "收起详细路线" : "展开查看完整12天路线、取舍理由和执行提醒";
     if (!expanded) {
       $("#builderResult").scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
@@ -1243,14 +1243,13 @@ function updateBuilder() {
         <h4>执行提醒</h4>
         <ul>${plan.cautions.map((item) => `<li>${item}</li>`).join("")}</ul>
       </div>
-      <div class="result-glass-fade" aria-hidden="true">
-        <span>展开查看完整12天路线、取舍理由和执行提醒</span>
+      <div class="result-glass-fade">
+        <button type="button" id="toggleBuilderDetails" aria-expanded="${builderExpanded}">
+          ${builderExpanded ? "收起详细路线" : "展开查看完整12天路线、取舍理由和执行提醒"}
+        </button>
       </div>
     </div>
     <div class="result-actions">
-      <button type="button" id="toggleBuilderDetails" aria-expanded="${builderExpanded}">
-        ${builderExpanded ? "收起详细路线" : "展开完整12天建议"}
-      </button>
       <button type="button" id="copyBuilderLink">复制分享链接</button>
       <button type="button" id="resetBuilder">恢复默认</button>
     </div>

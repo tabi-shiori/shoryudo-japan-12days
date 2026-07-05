@@ -1128,26 +1128,35 @@ select {
     rgba(255, 255, 255, 0.34);
   border-top: 1px solid rgba(255, 255, 255, 0.44);
   backdrop-filter: blur(13px) saturate(1.16);
-  pointer-events: none;
   transition:
     opacity 360ms ease,
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.result-glass-fade span {
-  padding: 8px 12px;
+.result-glass-fade button {
+  min-height: 42px;
+  max-width: min(100%, 460px);
+  padding: 8px 16px;
   color: var(--deep-sage);
   background: rgba(255, 255, 255, 0.56);
   border: 1px solid rgba(45, 95, 85, 0.13);
   border-radius: 999px;
   box-shadow: 0 12px 24px rgba(45, 95, 85, 0.1);
-  font-size: 13px;
+  cursor: pointer;
+  font-size: 14px;
   font-weight: 760;
+  backdrop-filter: blur(10px) saturate(1.12);
 }
 
 .result-fold.expanded .result-glass-fade {
-  opacity: 0;
-  transform: translateY(34px);
+  position: static;
+  min-height: auto;
+  padding: 16px 0 2px;
+  background: transparent;
+  border-top: 0;
+  backdrop-filter: none;
+  opacity: 1;
+  transform: none;
 }
 
 @supports not (backdrop-filter: blur(10px)) {
@@ -1258,21 +1267,25 @@ select {
 .result-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .result-actions button {
-  padding: 10px 14px;
-  color: white;
-  background: var(--deep-sage);
+  min-height: 34px;
+  padding: 7px 11px;
+  color: var(--deep-sage);
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(45, 95, 85, 0.18);
+  font-size: 13px;
   font-weight: 760;
 }
 
-.result-actions button + button {
-  color: var(--deep-sage);
+#resetBuilder {
+  color: var(--muted);
   background: transparent;
-  border-color: rgba(45, 95, 85, 0.24);
+  border-color: transparent;
 }
 
 .prepare-layout {
@@ -1389,7 +1402,7 @@ select {
   }
 
   .result-actions button {
-    width: 100%;
+    width: auto;
   }
 
   .checklist label:nth-child(odd) {
