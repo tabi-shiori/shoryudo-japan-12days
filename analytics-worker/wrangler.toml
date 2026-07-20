@@ -1,0 +1,17 @@
+name = "shoryudo-visitor-analytics"
+main = "src/worker.js"
+compatibility_date = "2026-07-20"
+workers_dev = true
+preview_urls = false
+
+[vars]
+ALLOWED_ORIGIN = "https://tabi-shiori.github.io"
+DATA_RETENTION_DAYS = "30"
+
+[triggers]
+crons = ["17 3 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "shoryudo-visitor-analytics"
+database_id = "7f585ed0-ac12-403a-9fd6-31117f48005b"

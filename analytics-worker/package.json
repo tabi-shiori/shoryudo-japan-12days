@@ -1,0 +1,16 @@
+{
+  "name": "shoryudo-visitor-analytics",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "node ./test/worker.test.mjs",
+    "db:remote": "wrangler d1 execute shoryudo-visitor-analytics --remote --file=./schema.sql",
+    "db:local": "wrangler d1 execute shoryudo-visitor-analytics --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.34.0"
+  }
+}

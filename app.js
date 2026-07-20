@@ -733,10 +733,10 @@ function renderHotels(activeBase = hotels[0]?.base || "全部") {
         <p class="hotel-review">${hotel.review}</p>
         <div class="hotel-note">${hotel.note}</div>
         <div class="hotel-actions" aria-label="${hotel.name} 订房链接">
-          <a href="${links.official}" target="_blank" rel="noreferrer">官网</a>
-          <a href="${links.booking}" target="_blank" rel="noreferrer">Booking</a>
-          <a href="${links.agoda}" target="_blank" rel="noreferrer">Agoda</a>
-          <a href="${links.maps}" target="_blank" rel="noreferrer">地图</a>
+          <a href="${links.official}" data-hotel="${hotel.name}" data-provider="官网" target="_blank" rel="noreferrer">官网</a>
+          <a href="${links.booking}" data-hotel="${hotel.name}" data-provider="Booking" target="_blank" rel="noreferrer">Booking</a>
+          <a href="${links.agoda}" data-hotel="${hotel.name}" data-provider="Agoda" target="_blank" rel="noreferrer">Agoda</a>
+          <a href="${links.maps}" data-hotel="${hotel.name}" data-provider="地图" target="_blank" rel="noreferrer">地图</a>
         </div>
       </article>
     `;

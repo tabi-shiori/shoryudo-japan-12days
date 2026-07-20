@@ -8,6 +8,7 @@
       name="description"
       content="上海出发、名古屋进出、不自驾、9月底到10月初，日本升龙道12天慢旅行互动攻略。"
     />
+    <meta name="shoryudo-analytics-endpoint" content="https://shoryudo-visitor-analytics.tabi-shiori-travel.workers.dev" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -52,7 +53,7 @@
         </div>
       </section>
 
-      <section class="overview band" aria-label="基础行程设定">
+      <section class="overview band" data-analytics-section="overview" aria-label="基础行程设定">
         <div class="section-inner overview-grid">
           <article class="stat-tile">
             <span class="stat-label">旅行时长</span>
@@ -293,7 +294,7 @@
         </div>
       </section>
 
-      <section class="section sources-section" aria-labelledby="sources-title">
+      <section id="sources" class="section sources-section" aria-labelledby="sources-title">
         <div class="section-inner">
           <div class="section-heading">
             <div>
@@ -313,13 +314,15 @@
           </div>
           <p class="source-note">
             本页按 2026 年 7 月可核信息制作。机票、班次、预约规则、票价、酒店房价、平台评价和天气会变化，出发前 30 天与 7 天各复核一次。
-            本站使用 Cloudflare Web Analytics 汇总访问量与页面性能，不使用 Cookie，也不识别具体访客。
+            本站使用 Cloudflare Web Analytics 汇总访问量与页面性能；经访客允许后，还会用本地随机编号记录匿名浏览轨迹，IP
+            仅保存脱敏网段与不可逆指纹，明细 30 天后自动删除。统计不记录姓名或联系方式，可随时在“统计设置”中关闭并删除本设备明细。
           </p>
         </div>
       </section>
     </main>
 
     <script src="./app.js"></script>
+    <script src="./analytics.js"></script>
     <!-- Cloudflare Web Analytics -->
     <script
       type="module"
