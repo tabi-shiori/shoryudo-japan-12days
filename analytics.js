@@ -278,10 +278,10 @@
       <aside class="analytics-consent" id="analyticsConsent" aria-live="polite" aria-label="匿名访问统计设置">
         <div class="analytics-consent-copy">
           <strong>匿名浏览统计</strong>
-          <p>允许后会记录浏览章节、停留时长、酒店跳转和路线选择。IP 仅保存脱敏网段与不可逆指纹，明细 30 天后自动删除，不记录姓名或联系方式。</p>
+          <p>本站默认记录浏览章节、停留时长、酒店跳转和路线选择。IP 仅保存脱敏网段与不可逆指纹，明细 30 天后自动删除，不记录姓名或联系方式。</p>
         </div>
         <div class="analytics-consent-actions">
-          <button class="analytics-allow" id="analyticsAllow" type="button">允许匿名统计</button>
+          <button class="analytics-allow" id="analyticsAllow" type="button">开启匿名统计</button>
           <button class="analytics-decline" id="analyticsDecline" type="button">暂不统计</button>
         </div>
         <p class="analytics-consent-status" id="analyticsConsentStatus"></p>
@@ -300,8 +300,9 @@
 
     function refreshStatus() {
       const consent = readStorage(localStorage, CONSENT_KEY);
-      status.textContent = consent === "granted" ? "当前状态：已允许。关闭后会删除本设备对应的匿名明细。" : consent === "denied" ? "当前状态：未启用自定义匿名统计。" : "请选择是否启用；未选择前不会发送自定义浏览事件。";
-      decline.textContent = consent === "granted" ? "关闭并删除本设备明细" : "暂不统计";
+      const enabled = consent !== "denied";
+      status.textContent = enabled ? "当前状态：匿名统计已开启。关闭后会删除本设备对应的匿名明细。" : "当前状态：匿名统计已关闭。";
+      decline.textContent = enabled ? "关闭并删除本设备明细" : "保持关闭";
     }
 
     settings.addEventListener("click", () => {
@@ -311,16 +312,16 @@
     });
 
     document.querySelector("#analyticsAllow").addEventListener("click", () => {
-      const wasGranted = readStorage(localStorage, CONSENT_KEY) === "granted";
+      const wasTracking = trackingStarted;
       writeStorage(localStorage, CONSENT_KEY, "granted");
-      startTracking(!wasGranted);
+      startTracking(!wasTracking);
       refreshStatus();
       setPanel(false);
     });
 
     decline.addEventListener("click", async () => {
       const existingVisitor = readStorage(localStorage, VISITOR_KEY);
-      if (readStorage(localStorage, CONSENT_KEY) === "granted" && existingVisitor) {
+      if (trackingStarted && existingVisitor) {
         decline.disabled = true;
         decline.textContent = "正在删除...";
         try {
@@ -333,9 +334,9 @@
           });
           if (!response.ok) throw new Error("delete_failed");
         } catch (_error) {
-          status.textContent = "删除请求失败，请稍后重试。现有统计设置没有改变。";
           decline.disabled = false;
           refreshStatus();
+          status.textContent = "删除请求失败，请稍后重试。现有统计设置没有改变。";
           setPanel(true);
           return;
         }
@@ -351,9 +352,8 @@
     });
 
     refreshStatus();
-    if (!readStorage(localStorage, CONSENT_KEY)) setPanel(true);
   }
 
   createPrivacyControls();
-  if (readStorage(localStorage, CONSENT_KEY) === "granted") startTracking();
+  if (readStorage(localStorage, CONSENT_KEY) !== "denied") startTracking();
 })();
