@@ -2,7 +2,6 @@
   const endpoint = document.querySelector('meta[name="shoryudo-analytics-endpoint"]')?.content?.replace(/\/$/, "");
   if (!endpoint || endpoint.includes("REPLACE_WITH_WORKER_URL")) return;
 
-  const CONSENT_KEY = "shoryudo-analytics-consent";
   const VISITOR_KEY = "shoryudo-anonymous-visitor";
   const SESSION_KEY = "shoryudo-anonymous-session";
   const MAX_EVENTS_PER_PAGE = 240;
@@ -32,14 +31,6 @@
       return true;
     } catch (_error) {
       return false;
-    }
-  };
-
-  const removeStorage = (storage, key) => {
-    try {
-      storage.removeItem(key);
-    } catch (_error) {
-      // Storage can be unavailable in hardened browser modes.
     }
   };
 
@@ -245,7 +236,7 @@
     });
   }
 
-  function startTracking(newlyGranted = false) {
+  function startTracking() {
     if (trackingStarted) return;
     const visitor = getOrCreateId(localStorage, VISITOR_KEY, "vis");
     const session = getOrCreateId(sessionStorage, SESSION_KEY, "ses");
@@ -253,107 +244,11 @@
     sessionId = session.id;
     trackingStarted = true;
     pageStarted = Date.now();
-    if (newlyGranted) sendEvent("consent_granted");
     if (session.created) sendEvent("session_start");
     sendEvent("page_view");
     initSectionTracking();
     bindInteractionTracking();
   }
 
-  function stopTracking() {
-    trackingStarted = false;
-    sectionObserver?.disconnect();
-    sectionObserver = null;
-    visitorId = "";
-    sessionId = "";
-    activeSection = "";
-    activeSectionStarted = 0;
-    visibleSections = new Map();
-  }
-
-  function createPrivacyControls() {
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      `<button class="analytics-settings" id="analyticsSettings" type="button" aria-controls="analyticsConsent" aria-expanded="false">统计设置</button>
-      <aside class="analytics-consent" id="analyticsConsent" aria-live="polite" aria-label="匿名访问统计设置">
-        <div class="analytics-consent-copy">
-          <strong>匿名浏览统计</strong>
-          <p>本站默认记录浏览章节、停留时长、酒店跳转和路线选择。IP 仅保存脱敏网段与不可逆指纹，明细 30 天后自动删除，不记录姓名或联系方式。</p>
-        </div>
-        <div class="analytics-consent-actions">
-          <button class="analytics-allow" id="analyticsAllow" type="button">开启匿名统计</button>
-          <button class="analytics-decline" id="analyticsDecline" type="button">暂不统计</button>
-        </div>
-        <p class="analytics-consent-status" id="analyticsConsentStatus"></p>
-      </aside>`,
-    );
-
-    const panel = document.querySelector("#analyticsConsent");
-    const settings = document.querySelector("#analyticsSettings");
-    const status = document.querySelector("#analyticsConsentStatus");
-    const decline = document.querySelector("#analyticsDecline");
-
-    function setPanel(open) {
-      panel.classList.toggle("open", open);
-      settings.setAttribute("aria-expanded", String(open));
-    }
-
-    function refreshStatus() {
-      const consent = readStorage(localStorage, CONSENT_KEY);
-      const enabled = consent !== "denied";
-      status.textContent = enabled ? "当前状态：匿名统计已开启。关闭后会删除本设备对应的匿名明细。" : "当前状态：匿名统计已关闭。";
-      decline.textContent = enabled ? "关闭并删除本设备明细" : "保持关闭";
-    }
-
-    settings.addEventListener("click", () => {
-      const open = !panel.classList.contains("open");
-      refreshStatus();
-      setPanel(open);
-    });
-
-    document.querySelector("#analyticsAllow").addEventListener("click", () => {
-      const wasTracking = trackingStarted;
-      writeStorage(localStorage, CONSENT_KEY, "granted");
-      startTracking(!wasTracking);
-      refreshStatus();
-      setPanel(false);
-    });
-
-    decline.addEventListener("click", async () => {
-      const existingVisitor = readStorage(localStorage, VISITOR_KEY);
-      if (trackingStarted && existingVisitor) {
-        decline.disabled = true;
-        decline.textContent = "正在删除...";
-        try {
-          const response = await fetch(`${endpoint}/delete`, {
-            method: "POST",
-            mode: "cors",
-            credentials: "omit",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ visitorId: existingVisitor }),
-          });
-          if (!response.ok) throw new Error("delete_failed");
-        } catch (_error) {
-          decline.disabled = false;
-          refreshStatus();
-          status.textContent = "删除请求失败，请稍后重试。现有统计设置没有改变。";
-          setPanel(true);
-          return;
-        }
-      }
-
-      writeStorage(localStorage, CONSENT_KEY, "denied");
-      removeStorage(localStorage, VISITOR_KEY);
-      removeStorage(sessionStorage, SESSION_KEY);
-      stopTracking();
-      decline.disabled = false;
-      refreshStatus();
-      setPanel(false);
-    });
-
-    refreshStatus();
-  }
-
-  createPrivacyControls();
-  if (readStorage(localStorage, CONSENT_KEY) !== "denied") startTracking();
+  startTracking();
 })();

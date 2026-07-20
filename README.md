@@ -2,7 +2,7 @@
 
 上海出发、名古屋优先进出、不自驾、9 月底到 10 月初的升龙道 12 天互动旅行攻略。
 
-主站是纯静态网站，部署在 GitHub Pages。`analytics.js` 默认把脱敏匿名交互事件发送到 Cloudflare Worker；访客可从右下角“统计设置”关闭并删除本设备明细。后台入口为：
+主站是纯静态网站，部署在 GitHub Pages。`analytics.js` 默认把脱敏匿名交互事件发送到 Cloudflare Worker。后台入口为：
 
 `https://shoryudo-visitor-analytics.tabi-shiori-travel.workers.dev/admin`
 
