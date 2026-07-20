@@ -78,9 +78,10 @@ const collected = await worker.fetch(
 assert.equal(collected.status, 204);
 assert.equal(calls.length, 1);
 assert.equal(calls[0].args[8], "/shoryudo-japan-12days/");
-assert.equal(calls[0].args[11], "203.0.x.x");
+assert.equal(calls[0].args[11], "203.0.113.42");
+assert.equal(calls[0].args[12], "203.0.x.x");
 assert.match(calls[0].args[10], /^[a-f0-9]{64}$/);
-assert.equal(JSON.stringify(calls[0].args).includes("203.0.113.42"), false);
+assert.equal(JSON.stringify(calls[0].args).includes("203.0.113.42"), true);
 
 const deleted = await worker.fetch(
   new Request("https://worker.test/delete", {

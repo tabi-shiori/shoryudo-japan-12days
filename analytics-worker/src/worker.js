@@ -104,7 +104,7 @@ async function handleCollect(request, env) {
     return corsResponse(request, env, { error: "invalid_event" }, 400);
   }
 
-  const clientIp = request.headers.get("CF-Connecting-IP") || "";
+  const clientIp = cleanIp(request.headers.get("CF-Connecting-IP"));
   const ipHash = clientIp && env.IP_HASH_SECRET ? await hmacHex(env.IP_HASH_SECRET, clientIp) : null;
   const path = cleanPath(body.path);
   const metadata = compactMetadata(body.metadata);
@@ -114,9 +114,9 @@ async function handleCollect(request, env) {
     await env.DB.prepare(
       `INSERT OR IGNORE INTO events (
         event_id, visitor_id, session_id, event_name, section_id, target_id,
-        metadata, duration_seconds, path, referrer_host, ip_hash, ip_masked,
-        country, device_type, locale
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        metadata, duration_seconds, path, referrer_host, ip_hash, ip_address,
+        ip_masked, country, device_type, locale
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(
         eventId,
@@ -130,6 +130,7 @@ async function handleCollect(request, env) {
         path,
         cleanHostname(body.referrerHost),
         ipHash,
+        clientIp,
         maskIp(clientIp),
         cleanText(request.cf?.country, 2) || null,
         cleanDevice(body.deviceType),
@@ -200,12 +201,27 @@ async function handleStats(env) {
       FROM events WHERE event_name NOT IN ('session_start', 'page_view', 'page_exit', 'section_view', 'section_dwell')
       AND occurred_at >= datetime('now', '-30 days')
       GROUP BY event_name ORDER BY total DESC LIMIT 10`),
-    env.DB.prepare(`SELECT visitor_id, ip_masked, substr(ip_hash, 1, 10) AS network_key,
-      country, device_type, MIN(occurred_at) AS first_seen, MAX(occurred_at) AS last_seen,
-      COUNT(DISTINCT session_id) AS sessions, COUNT(*) AS events,
-      COALESCE(SUM(duration_seconds), 0) AS engaged_seconds
-      FROM events WHERE occurred_at >= datetime('now', '-30 days')
-      GROUP BY visitor_id, ip_masked, network_key, country, device_type
+    env.DB.prepare(`SELECT e.visitor_id,
+      (SELECT recent.ip_address FROM events recent
+        WHERE recent.visitor_id = e.visitor_id AND recent.ip_address IS NOT NULL
+        ORDER BY recent.occurred_at DESC, recent.rowid DESC LIMIT 1) AS ip_address,
+      (SELECT recent.ip_masked FROM events recent
+        WHERE recent.visitor_id = e.visitor_id AND recent.ip_masked IS NOT NULL
+        ORDER BY recent.occurred_at DESC, recent.rowid DESC LIMIT 1) AS ip_masked,
+      (SELECT substr(recent.ip_hash, 1, 10) FROM events recent
+        WHERE recent.visitor_id = e.visitor_id AND recent.ip_hash IS NOT NULL
+        ORDER BY recent.occurred_at DESC, recent.rowid DESC LIMIT 1) AS network_key,
+      (SELECT recent.country FROM events recent
+        WHERE recent.visitor_id = e.visitor_id AND recent.country IS NOT NULL
+        ORDER BY recent.occurred_at DESC, recent.rowid DESC LIMIT 1) AS country,
+      (SELECT recent.device_type FROM events recent
+        WHERE recent.visitor_id = e.visitor_id
+        ORDER BY recent.occurred_at DESC, recent.rowid DESC LIMIT 1) AS device_type,
+      MIN(e.occurred_at) AS first_seen, MAX(e.occurred_at) AS last_seen,
+      COUNT(DISTINCT e.session_id) AS sessions, COUNT(*) AS events,
+      COALESCE(SUM(e.duration_seconds), 0) AS engaged_seconds
+      FROM events e WHERE e.occurred_at >= datetime('now', '-30 days')
+      GROUP BY e.visitor_id
       ORDER BY last_seen DESC LIMIT 80`),
   ];
 
@@ -225,7 +241,7 @@ async function handleVisitor(url, env) {
   if (!visitorId) return jsonResponse({ error: "invalid_visitor" }, 400);
 
   const result = await env.DB.prepare(`SELECT event_name, section_id, target_id, metadata,
-    duration_seconds, path, ip_masked, country, device_type, occurred_at
+    duration_seconds, path, ip_address, ip_masked, country, device_type, occurred_at
     FROM events WHERE visitor_id = ? ORDER BY occurred_at DESC LIMIT 160`)
     .bind(visitorId)
     .all();
@@ -308,6 +324,16 @@ function cleanHostname(value) {
 function cleanDevice(value) {
   const device = cleanText(value, 16);
   return ["mobile", "tablet", "desktop"].includes(device) ? device : "unknown";
+}
+
+function cleanIp(value) {
+  const ip = cleanText(value, 64);
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(ip)) {
+    const octets = ip.split(".").map(Number);
+    return octets.every((octet) => octet >= 0 && octet <= 255) ? ip : null;
+  }
+  if (ip.includes(":") && /^[0-9a-f:.]+$/i.test(ip)) return ip.toLowerCase();
+  return null;
 }
 
 function clampInteger(value, min, max) {
@@ -404,7 +430,7 @@ function loginHtml(message = "") {
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>升龙道访问统计</title><style>
 :root{color-scheme:light;font-family:Inter,"Noto Sans SC","Microsoft YaHei",sans-serif;color:#1e2926;background:#eef3f0}*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:linear-gradient(145deg,#edf4f1,#f8f5ee)}main{width:min(420px,100%);padding:30px;background:rgba(255,255,255,.9);border:1px solid rgba(45,95,85,.16);border-radius:8px;box-shadow:0 24px 70px rgba(31,54,49,.14)}p{color:#64706d;line-height:1.7}label{display:block;margin:22px 0 8px;font-weight:700}input{width:100%;height:46px;padding:0 12px;border:1px solid #b8c7c1;border-radius:6px;font:inherit}button{width:100%;height:46px;margin-top:12px;border:0;border-radius:6px;color:white;background:#2d5f55;font:inherit;font-weight:750;cursor:pointer}.error{padding:10px 12px;color:#8a3f2d;background:#fff0e9;border-radius:6px}small{display:block;margin-top:18px;color:#7d8985}</style></head>
-<body><main><p>PRIVATE ANALYTICS</p><h1>升龙道访问统计</h1><p>仅网站所有者可查看匿名访客轨迹与脱敏网络信息。</p>${message ? `<p class="error">${message}</p>` : ""}<form method="post" action="/admin/login"><label for="password">管理密码</label><input id="password" name="password" type="password" autocomplete="current-password" required autofocus><button type="submit">进入统计后台</button></form><small>登录状态仅保存在当前浏览器，7 天后自动失效。</small></main></body></html>`;
+<body><main><p>PRIVATE ANALYTICS</p><h1>升龙道访问统计</h1><p>仅网站所有者可查看访客轨迹与完整 IP。</p>${message ? `<p class="error">${message}</p>` : ""}<form method="post" action="/admin/login"><label for="password">管理密码</label><input id="password" name="password" type="password" autocomplete="current-password" required autofocus><button type="submit">进入统计后台</button></form><small>登录状态仅保存在当前浏览器，7 天后自动失效。</small></main></body></html>`;
 }
 
 function dashboardHtml() {
@@ -412,15 +438,15 @@ function dashboardHtml() {
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>升龙道访问统计</title><style>
 :root{font-family:Inter,"Noto Sans SC","Microsoft YaHei",sans-serif;color:#1f2926;background:#f3f5f2;--green:#2d5f55;--orange:#c86d3d;--line:#dbe3df}*{box-sizing:border-box}body{margin:0}header{position:sticky;top:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:14px clamp(18px,4vw,54px);background:rgba(255,255,255,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}header strong{font-size:18px}a{color:var(--green)}main{width:min(1180px,100%);margin:auto;padding:28px clamp(16px,4vw,48px) 64px}.notice{color:#66716e}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}.card,.panel{background:white;border:1px solid var(--line);border-radius:8px}.card{padding:17px}.card span{display:block;color:#73807c;font-size:13px}.card strong{display:block;margin-top:7px;font-size:26px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.panel{padding:18px;overflow:hidden}.panel h2{margin:0 0 16px;font-size:18px}.bars{display:grid;gap:9px}.bar{display:grid;grid-template-columns:minmax(90px,1fr) 3fr 42px;gap:10px;align-items:center;font-size:13px}.track{height:8px;overflow:hidden;background:#edf1ef;border-radius:4px}.fill{height:100%;background:var(--green)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--line)}th{color:#6f7b77}.table-wrap{overflow:auto}button.link{padding:0;border:0;color:var(--green);background:none;font:inherit;font-weight:700;cursor:pointer}.timeline{display:grid;gap:8px;max-height:520px;overflow:auto}.event{display:grid;grid-template-columns:150px 120px 1fr;gap:12px;padding:10px;background:#f7f9f8;border-radius:6px;font-size:13px}.event time{color:#6f7b77}.event code{overflow-wrap:anywhere;color:#44504d}.empty{padding:20px;color:#77827f;text-align:center;background:#f7f9f8;border-radius:6px}.full{grid-column:1/-1}@media(max-width:760px){.cards,.grid{grid-template-columns:1fr 1fr}.event{grid-template-columns:1fr}.hide-mobile{display:none}}@media(max-width:460px){.cards,.grid{grid-template-columns:1fr}}</style></head>
-<body><header><strong>升龙道访问统计</strong><a href="/admin/logout">退出</a></header><main><p class="notice" id="retention">加载中...</p><section class="cards" id="summary"></section><section class="grid"><article class="panel"><h2>最近 14 天访问</h2><div class="bars" id="daily"></div></article><article class="panel"><h2>热门章节</h2><div class="bars" id="sections"></div></article><article class="panel"><h2>常用操作</h2><div class="bars" id="actions"></div></article><article class="panel"><h2>说明</h2><p class="notice">访客编号只代表同一浏览器；更换设备、无痕模式或清除数据后会生成新编号。IP 仅显示脱敏网段，网络键为不可逆指纹的前 10 位。</p></article><article class="panel full"><h2>匿名访客</h2><div class="table-wrap"><table><thead><tr><th>访客编号</th><th>脱敏 IP</th><th class="hide-mobile">国家</th><th>会话</th><th>停留</th><th>最后访问</th></tr></thead><tbody id="visitors"></tbody></table></div></article><article class="panel full"><h2 id="timelineTitle">访客时间线</h2><div class="timeline" id="timeline"><div class="empty">点击上方访客编号查看浏览轨迹</div></div></article></section></main>
+<body><header><strong>升龙道访问统计</strong><a href="/admin/logout">退出</a></header><main><p class="notice" id="retention">加载中...</p><section class="cards" id="summary"></section><section class="grid"><article class="panel"><h2>最近 14 天访问</h2><div class="bars" id="daily"></div></article><article class="panel"><h2>热门章节</h2><div class="bars" id="sections"></div></article><article class="panel"><h2>常用操作</h2><div class="bars" id="actions"></div></article><article class="panel"><h2>说明</h2><p class="notice">访客编号只代表同一浏览器；更换设备、无痕模式或清除数据后会生成新编号。完整 IP 仅在此密码后台显示，网络键为不可逆指纹的前 10 位。</p></article><article class="panel full"><h2>访客记录</h2><div class="table-wrap"><table><thead><tr><th>访客编号</th><th>访客 IP</th><th class="hide-mobile">国家</th><th>会话</th><th>停留</th><th>最后访问</th></tr></thead><tbody id="visitors"></tbody></table></div></article><article class="panel full"><h2 id="timelineTitle">访客时间线</h2><div class="timeline" id="timeline"><div class="empty">点击上方访客编号查看浏览轨迹</div></div></article></section></main>
 <script>
 const labels={session_start:'开始访问',page_view:'打开页面',page_exit:'离开页面',section_view:'查看章节',section_dwell:'章节停留',navigation:'站内导航',route_mode:'切换推荐路线',map_place:'查看地图地点',map_filter:'地图筛选',hotel_filter:'筛选酒店城市',hotel_outbound:'打开酒店链接',route_generate:'生成自定义路线',builder_details:'展开路线详情',share_link:'复制分享链接',builder_reset:'恢复默认',external_link:'打开资料链接',consent_granted:'同意匿名统计'};
 const esc=(value)=>String(value??'').replace(/[&<>"']/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const minutes=(seconds)=>Math.max(0,Math.round(Number(seconds||0)/6)/10)+' 分钟';
 const short=(id)=>String(id||'').slice(0,8);
 function bars(target,rows,labelKey='label',valueKey='total'){const el=document.querySelector(target);if(!rows.length){el.innerHTML='<div class="empty">暂无数据</div>';return}const max=Math.max(...rows.map(row=>Number(row[valueKey]||0)),1);el.innerHTML=rows.map(row=>'<div class="bar"><span>'+esc(labels[row[labelKey]]||row[labelKey]||row.day)+'</span><div class="track"><div class="fill" style="width:'+Math.max(4,Number(row[valueKey]||0)/max*100)+'%"></div></div><strong>'+esc(row[valueKey])+'</strong></div>').join('')}
-async function load(){const response=await fetch('/api/stats');if(!response.ok){location.reload();return}const data=await response.json();document.querySelector('#retention').textContent='匿名明细保留 '+data.retentionDays+' 天，过期数据每日自动清理。';const s=data.summary;document.querySelector('#summary').innerHTML=[['匿名访客',s.visitors],['访问会话',s.sessions],['记录事件',s.events],['有效停留',minutes(s.engaged_seconds)]].map(([label,value])=>'<article class="card"><span>'+label+'</span><strong>'+esc(value||0)+'</strong></article>').join('');bars('#daily',data.daily,'day','sessions');bars('#sections',data.sections);bars('#actions',data.actions);document.querySelector('#visitors').innerHTML=data.visitors.map(row=>'<tr><td><button class="link" data-visitor="'+esc(row.visitor_id)+'">'+esc(short(row.visitor_id))+'</button><br><small>'+esc(row.network_key||'无网络键')+'</small></td><td>'+esc(row.ip_masked||'未知')+'</td><td class="hide-mobile">'+esc(row.country||'-')+'</td><td>'+esc(row.sessions)+'</td><td>'+esc(minutes(row.engaged_seconds))+'</td><td>'+esc(new Date(row.last_seen+'Z').toLocaleString())+'</td></tr>').join('')||'<tr><td colspan="6">暂无访问数据</td></tr>';document.querySelectorAll('[data-visitor]').forEach(button=>button.addEventListener('click',()=>loadVisitor(button.dataset.visitor)))}
-async function loadVisitor(id){const response=await fetch('/api/visitor?id='+encodeURIComponent(id));const data=await response.json();document.querySelector('#timelineTitle').textContent='访客 '+short(id)+' 的时间线';document.querySelector('#timeline').innerHTML=data.events.map(event=>{let meta='';try{const parsed=JSON.parse(event.metadata||'{}');meta=Object.keys(parsed).length?' · '+JSON.stringify(parsed):''}catch{}return '<div class="event"><time>'+esc(new Date(event.occurred_at+'Z').toLocaleString())+'</time><strong>'+esc(labels[event.event_name]||event.event_name)+'</strong><code>'+esc(event.section_id||event.target_id||event.path)+esc(event.duration_seconds?' · '+event.duration_seconds+'秒':'')+esc(meta)+'</code></div>'}).join('')||'<div class="empty">暂无明细</div>';document.querySelector('#timelineTitle').scrollIntoView({behavior:'smooth',block:'start'})}
+async function load(){const response=await fetch('/api/stats');if(!response.ok){location.reload();return}const data=await response.json();document.querySelector('#retention').textContent='访问明细保留 '+data.retentionDays+' 天，过期数据每日自动清理。';const s=data.summary;document.querySelector('#summary').innerHTML=[['访客浏览器',s.visitors],['访问会话',s.sessions],['记录事件',s.events],['有效停留',minutes(s.engaged_seconds)]].map(([label,value])=>'<article class="card"><span>'+label+'</span><strong>'+esc(value||0)+'</strong></article>').join('');bars('#daily',data.daily,'day','sessions');bars('#sections',data.sections);bars('#actions',data.actions);document.querySelector('#visitors').innerHTML=data.visitors.map(row=>'<tr><td><button class="link" data-visitor="'+esc(row.visitor_id)+'">'+esc(short(row.visitor_id))+'</button><br><small>'+esc(row.network_key||'无网络键')+'</small></td><td>'+esc(row.ip_address||(row.ip_masked?'历史网段 '+row.ip_masked:'未知'))+'</td><td class="hide-mobile">'+esc(row.country||'-')+'</td><td>'+esc(row.sessions)+'</td><td>'+esc(minutes(row.engaged_seconds))+'</td><td>'+esc(new Date(row.last_seen+'Z').toLocaleString())+'</td></tr>').join('')||'<tr><td colspan="6">暂无访问数据</td></tr>';document.querySelectorAll('[data-visitor]').forEach(button=>button.addEventListener('click',()=>loadVisitor(button.dataset.visitor)))}
+async function loadVisitor(id){const response=await fetch('/api/visitor?id='+encodeURIComponent(id));const data=await response.json();document.querySelector('#timelineTitle').textContent='访客 '+short(id)+' 的时间线';document.querySelector('#timeline').innerHTML=data.events.map(event=>{let meta='';try{const parsed=JSON.parse(event.metadata||'{}');meta=Object.keys(parsed).length?' · '+JSON.stringify(parsed):''}catch{}const ip=event.ip_address?' · IP '+event.ip_address:event.ip_masked?' · 历史网段 '+event.ip_masked:'';return '<div class="event"><time>'+esc(new Date(event.occurred_at+'Z').toLocaleString())+'</time><strong>'+esc(labels[event.event_name]||event.event_name)+'</strong><code>'+esc(event.section_id||event.target_id||event.path)+esc(event.duration_seconds?' · '+event.duration_seconds+'秒':'')+esc(ip)+esc(meta)+'</code></div>'}).join('')||'<div class="empty">暂无明细</div>';document.querySelector('#timelineTitle').scrollIntoView({behavior:'smooth',block:'start'})}
 load().catch(()=>{document.querySelector('#retention').textContent='统计数据加载失败，请刷新重试。'});
 </script></body></html>`;
 }

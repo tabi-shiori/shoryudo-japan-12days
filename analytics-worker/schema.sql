@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS events (
   path TEXT NOT NULL,
   referrer_host TEXT,
   ip_hash TEXT,
+  ip_address TEXT,
   ip_masked TEXT,
   country TEXT,
   device_type TEXT,
@@ -22,3 +23,4 @@ CREATE INDEX IF NOT EXISTS idx_events_visitor ON events (visitor_id, occurred_at
 CREATE INDEX IF NOT EXISTS idx_events_session ON events (session_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_events_name ON events (event_name, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_events_ip_hash ON events (ip_hash, occurred_at);
+CREATE INDEX IF NOT EXISTS idx_events_ip_address ON events (ip_address, occurred_at);
